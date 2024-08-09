@@ -30,7 +30,7 @@ export PATH=$PATH:$SPARK_HOME/bin:$SPARK_HOME/sbin
 <h4>First, create a service file for Spark master using the following command:</h4>
 <code>nano /etc/systemd/system/spark-master.service</code>
 <h4>Add following lines to the file</h4>
-```
+```bash
 [Unit]
 Description=Apache Spark Master
 After=network.target
@@ -48,7 +48,7 @@ WantedBy=multi-user.target
 <h4>Create a service file for Spark slave/ worker:</h4>
 <code>nano /etc/systemd/system/spark-slave.service</code>
 <h4>Add following lines to the file</h4>
-```
+```bash
 [Unit]
 Description=Apache Spark Worker
 After=network.target
@@ -69,7 +69,7 @@ WantedBy=multi-user.target
 <h4>First copy template file to shell script</h4>
 <code>cp /opt/spark/conf/spark-env.sh.template /opt/spark/conf/spark-env.sh</code>
 <h4>Add following line to the shell script</h4>
-```
+```bash
 export SPARK_MASTER_HOST=192.168.1.14
 export SPARK_WORKER_MEMORY=1g
 export SPARK_WORKER_CORES=2
@@ -83,7 +83,7 @@ export SPARK_EXECUTOR_CORES=2
 
 <h2>Setup Spark Cluster</h2>
 <h3>Enable spark master node</h3>
-```
+```bash
 systemctl start spark-master
 systemctl enable spark-master
 # Check status
@@ -92,7 +92,7 @@ systemctl status spark-master
 <h4>Spark master can be seen on UI on this IP https://192.168.1.14:8080</h4>
 
 <h3>Launch worker nodes</h3>
-```
+```bash
 sudo -u spark /opt/spark/sbin/start-worker.sh spark://192.168.1.14:7077 --webui-port 8081
 sudo -u spark /opt/spark/sbin/start-worker.sh spark://192.168.1.14:7077 --webui-port 8082
 sudo -u spark /opt/spark/sbin/start-worker.sh spark://192.168.1.14:7077 --webui-port 8083
@@ -104,7 +104,7 @@ sudo -u spark /opt/spark/sbin/start-worker.sh spark://192.168.1.14:7077 --webui-
 ![image info](spark_setup.png)
 
 <h2>Testing the cluster</h2>
-```
+```shell
 spark-submit --master spark://192.168.1.14:7077 --executor-memory 1G --executor-cores 2 --total-executor-cores 4 test_app.py
 ```
 <h4>The above test_case.py file is included in the repo and was used to test the spark job. Testing was succesful with the script running in desired # worker nodes</h4>
