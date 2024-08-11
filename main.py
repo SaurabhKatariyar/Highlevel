@@ -259,6 +259,9 @@ if __name__ == '__main__':
 
         print('Validation complete.')
 
+        training = model.transform(training)
+        testing = model.transform(testing)
+
         mlflow.log_metric('training_time', training_time)
         mlflow.log_metric('n_workers', workers)
         mlflow.log_metric("validation_metric-MAE", val_score)
