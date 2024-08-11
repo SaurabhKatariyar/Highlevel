@@ -176,7 +176,7 @@ def feature_pipeline(field: str):
 
 def data_pipeline(df):
     # for field in ['Title', 'description', 'authors', 'categories', 'publisher']:
-    for field in ['authors', 'categories', 'publisher']:
+    for field in ['Title', 'authors', 'categories', 'publisher']:
         print(field)
         pipe = feature_pipeline(field=field)
         extractor = pipe.fit(df)
@@ -187,8 +187,13 @@ def data_pipeline(df):
     #                'selected_publisher_features', 'selected_cat_features', 'num_authors'],
     #     outputCol='features')
 
+    # assembler = VectorAssembler(
+    #     inputCols=['selected_author_features', 'selected_publisher_features', 'selected_cat_features', 'num_authors'],
+    #     outputCol='features')
+
     assembler = VectorAssembler(
-        inputCols=['selected_author_features', 'selected_publisher_features', 'selected_cat_features', 'num_authors'],
+        inputCols=['selected_title_features', 'selected_author_features',
+                   'selected_publisher_features', 'selected_cat_features', 'num_authors'],
         outputCol='features')
 
     # pca = PCA(k=250, inputCol='features', outputCol='pca_features')
@@ -219,7 +224,7 @@ if __name__ == '__main__':
     # Setting up experiments in MlFlow
     experiment_name = 'HighLevelBookTask'
     # run name specific to algo and worker node config
-    run_name = f'TrainingAlgo{algo}WorkerNode{workers}'
+    run_name = f'TrainingAlgo{algo}WorkerNode{workers}WithTitle'
 
     # csv file path, to be changed as per system
     data_path = '/home/saurabhk/Downloads/books_task.csv'
