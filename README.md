@@ -8,3 +8,5 @@ Report can be seen in the HighlevelTaskReport.pdf file</br>
 Command to run the app.</br>
 ```spark-submit --master spark://192.168.1.14:7077 --executor-memory 2G     --executor-cores 2     --total-executor-cores 8     main.py --workers 4 --algo LinearRegression```
 
+To access mlflow from local dir </br>
+``` mlflow ui --port 8090 --backend-store-uri /home/saurabhk/PycharmProjects/Highlevel/mlruns```
