@@ -39,6 +39,16 @@ def text2list(txt: [str, float64]) -> List:
         return []
 
 
+def freq_trimmer(df: DataFrame, field: str, threshold: int) -> DataFrame:
+    # Calculate frequencies
+    frequency = df[field].value_counts()
+
+    # Group rare categories into 'Other'
+    df[field] = df[field].apply(lambda x: x if frequency[x] > threshold else 'Other')
+
+    return df
+
+
 def data_cleansing(df: DataFrame) -> DataFrame:
     """
     Handles all the cleansing steps identified while EDA
@@ -51,6 +61,8 @@ def data_cleansing(df: DataFrame) -> DataFrame:
     df['num_authors'] = df['authors'].apply(lambda x: len(x) if isinstance(x, list) else 0)
     del df['Unnamed: 0']
     del df['publishedDate']
+    freq_trimmer(df, 'categories', 20)
+    freq_trimmer(df, 'publisher', 20)
     data_type = []
     for col_ in df.columns:
         data_type.append({'Column': col_, 'Datatype': df[col_].dtype,
@@ -156,22 +168,27 @@ def feature_pipeline(field: str):
 
         pipe_ = Pipeline(
             stages=[
-                tokenizer_cat, encoded_categories,  final_feature, selector
+                tokenizer_cat, encoded_categories, final_feature, selector
             ])
 
     return pipe_
 
 
 def data_pipeline(df):
-    for field in ['Title', 'description', 'authors', 'categories', 'publisher']:
+    # for field in ['Title', 'description', 'authors', 'categories', 'publisher']:
+    for field in ['authors', 'categories', 'publisher']:
         print(field)
         pipe = feature_pipeline(field=field)
         extractor = pipe.fit(df)
         df = extractor.transform(df)
 
+    # assembler = VectorAssembler(
+    #     inputCols=['selected_title_features',  'selected_desc_features', 'selected_author_features',
+    #                'selected_publisher_features', 'selected_cat_features', 'num_authors'],
+    #     outputCol='features')
+
     assembler = VectorAssembler(
-        inputCols=['selected_title_features',  'selected_desc_features', 'selected_author_features',
-                   'selected_publisher_features', 'selected_cat_features', 'num_authors'],
+        inputCols=['selected_author_features', 'selected_publisher_features', 'selected_cat_features', 'num_authors'],
         outputCol='features')
 
     # pca = PCA(k=250, inputCol='features', outputCol='pca_features')
@@ -180,13 +197,14 @@ def data_pipeline(df):
     feature = pipe_.fit(df)
     df = feature.transform(df)
     clean_data = df.select(['Impact', 'features'])
-    clean_data = clean_data.withColumnRenamed('Impact', 'label')#.withColumnRenamed(
-        # 'pca_features', 'features')
+    clean_data = clean_data.withColumnRenamed('Impact', 'label')  #.withColumnRenamed(
+    # 'pca_features', 'features')
     return clean_data
 
 
 if __name__ == '__main__':
     import argparse
+
     parser = argparse.ArgumentParser()
     # Reading arguments of what training algorithm to run and number of worker nodes to log in MLFLOW
     parser.add_argument("--workers", help="Number of spark workers.")
@@ -218,7 +236,7 @@ if __name__ == '__main__':
 
     print(data.printSchema())
 
-    (training, testing) = data.randomSplit([0.7, 0.3], seed=12345)
+    (training, testing) = data.randomSplit([0.6, 0.4], seed=12345)
 
     mlflow.set_experiment(experiment_name=experiment_name)
 
@@ -226,34 +244,53 @@ if __name__ == '__main__':
         mlflow.set_tag('mlflow.runName', run_name)
         mlflow.log_metric('data_processing_time', data_processing_time)
         params_grid = ParamGridBuilder().build()
-        reg = LinearRegression(maxIter=5, loss="huber", predictionCol='prediction')
+        reg = LinearRegression(maxIter=5, loss="squaredError", predictionCol='prediction')
 
         tvs = TrainValidationSplit(estimator=reg, estimatorParamMaps=params_grid,
-                                   evaluator=RegressionEvaluator(metricName='mae'), trainRatio=0.7)
+                                   evaluator=RegressionEvaluator(metricName='mae'), trainRatio=0.7, seed=425)
 
         train_start = time()
         model = tvs.fit(training)
         training_time = time() - train_start
 
+        val_scores = model.validationMetrics
+        val_score = sum(val_scores) / len(val_scores)
+        print(val_scores)
+
+        print('Validation complete.')
+
         mlflow.log_metric('training_time', training_time)
-        mlflow.log_metric('training_algorithm', algo)
         mlflow.log_metric('n_workers', workers)
-        mlflow.log_metric("validation_metric", model.validationMetrics)
+        mlflow.log_metric("validation_metric-MAE", val_score)
 
+        mae = RegressionEvaluator(metricName='mae')
+        train_mae = mae.evaluate(training)
+        test_mae = mae.evaluate(testing)
 
+        mse = RegressionEvaluator(metricName='mse')
+        train_mse = mse.evaluate(training)
+        test_mse = mse.evaluate(testing)
 
+        rmse = RegressionEvaluator(metricName='rmse')
+        train_rmse = rmse.evaluate(training)
+        test_rmse = rmse.evaluate(testing)
 
+        r2 = RegressionEvaluator(metricName='r2')
+        train_r2 = r2.evaluate(training)
+        test_r2 = r2.evaluate(testing)
 
+        var = RegressionEvaluator(metricName='var')
+        train_var = var.evaluate(training)
+        test_var = var.evaluate(testing)
 
+        mlflow.log_metric("training_metric-MAE", train_mae)
+        mlflow.log_metric("training_metric-MSE", train_mse)
+        mlflow.log_metric("training_metric-RMSE", train_rmse)
+        mlflow.log_metric("training_metric-R2", train_r2)
+        mlflow.log_metric("training_metric-Var", train_var)
 
-
-
-
-
-
-
-
-
-
-
-
+        mlflow.log_metric("testing_metric-MAE", test_mae)
+        mlflow.log_metric("testing_metric-MSE", test_mse)
+        mlflow.log_metric("testing_metric-RMSE", test_rmse)
+        mlflow.log_metric("testing_metric-R2", test_r2)
+        mlflow.log_metric("testing_metric-Var", test_var)
